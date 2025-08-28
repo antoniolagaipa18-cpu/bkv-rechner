@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BkV-Rechner – Die Dachdecker Versicherung</title>
+  <style>
+    :root{
+      --brand-navy:#0d2a47;      /* wie Danke-Seite */
+      --brand-gold:#d4af37;      /* Gold-Akzent */
+      --slate:#2f3237;           /* Schiefergrau */
+      --text:#ffffff;            /* hell auf dunkel */
+    }
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;max-width:1100px;margin:18px auto;padding:18px;background:linear-gradient(120deg,#2f3237 0,#3a3f45 100%);color:var(--text)}
+    header{background:linear-gradient(90deg,var(--brand-navy),#102f53);color:#fff;padding:16px 18px;border-radius:14px;box-shadow:0 6px 18px rgba(13,42,71,.28)}
+    header h1{display:flex;gap:10px;align-items:center;font-size:24px;margin:0}
+    header h1 .badge{background:var(--brand-gold);color:#0d2a47;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:800}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px;margin-top:16px}
+    .card{background:#121418;border-radius:14px;border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 24px rgba(0,0,0,.28);padding:14px;color:#fff}
+    label{display:block;margin:10px 0 4px;font-size:14px}
+    input,select,button,textarea{padding:10px 12px;font-size:14px;border:1px solid #444;border-radius:10px;background:#fff;color:#0d2a47}
+    input,select,textarea{width:100%}
+    .row{display:flex;gap:10px}
+    .btn{cursor:pointer;border:none}
+    .btn-primary{background:var(--brand-gold);color:#0d2a47;font-weight:700}
+    .btn-primary:hover{filter:brightness(0.95)}
+    .btn-outline{background:#fff;border:2px solid var(--brand-navy);color:#0d2a47}
+    .btn-full{width:100%}
+    .result{background:#1e2127;padding:12px;border-radius:10px;border:1px dashed var(--brand-gold);color:#fff}
+    .small{font-size:13px;color:#ddd}
+    .full{grid-column:1/3}
+    .pill{display:inline-block;background:var(--brand-gold);color:#0d2a47;padding:2px 8px;border-radius:999px;font-weight:800;font-size:12px}
+    .list{margin:6px 0 0 18px}
+    .tariff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .tariff-card{background:linear-gradient(160deg,#1c1e22 0,#2a2d32 100%);border:1px solid rgba(255,255,255,.08);border-left:6px solid var(--brand-gold);padding:12px;border-radius:12px;color:#fff}
+    .addon-card{background:linear-gradient(160deg,#1c1e22 0,#2a2d32 100%);border:1px solid rgba(255,255,255,.08);border-left:6px solid #2a7bd6;padding:12px;border-radius:12px;color:#fff}
+    .tariff-card h4,.addon-card h4{margin:0 0 6px;color:var(--brand-gold)}
+    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .kpi div{background:#2a2d32;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center}
+    @media (max-width:1000px){ .grid{grid-template-columns:1fr} .full{grid-column:1/2} .tariff-grid{grid-template-columns:1fr} }
+  </style>
+
+  <!-- Define all functions BEFORE they're referenced by onsubmit -->
+  <script>
+    // ====== CONFIG & HELPERS ======
+    const tariffs = {
+      aktiv: { "300":13.00, "600":22.00, "900":30.00, "1200":37.00, "1500":43.00 },
+      agil:  { "300":24.22, "600":33.22, "900":41.22, "1200":48.22, "1500":54.22 }
+    };
+    const addonMonthly = 1.66; // Unfall Clinic+
+
+    function fmt(x){
+      const n = Number(x)||0;
+      return n.toLocaleString('de-DE', {minimumFractionDigits: (n%1)?2:0, maximumFractionDigits:2}) + ' €';
+    }
+
+    // ====== CORE CALCULATION (pure) ======
+    function calculate(){
+      const N = Number(document.getElementById('employees').value) || 0;
+      const tarif = document.getElementById('tarif').value;
+      const budget = document.getElementById('budget').value;
+      const addon = document.getElementById('addon').checked ? addonMonthly : 0;
+      const d = Number(document.getElementById('daysSaved').value) || 0;
+      const c = Number(document.getElementById('costPerDay').value) || 0;
+      const p = Number(document.getElementById('profitPerDay').value) || 0;
+
+      const m = tariffs[tarif][budget];
+      const monthlyCompany = N * (m + addon);
+      const annualCompany = monthlyCompany * 12;
+      const daysSavedTotal = N * d;
+      const wageSaving = daysSavedTotal * c;
+      const profitSaving = daysSavedTotal * p;
+      const totalSaving = wageSaving + profitSaving;
+      const netBenefit = totalSaving - annualCompany;
+      const roi = annualCompany>0 ? (netBenefit / annualCompany * 100) : null;
+      const breakEvenDays = (N>0 && (c+p)>0) ? (annualCompany / (N * (c + p))) : null;
+
+      // UI write
+      const out = document.getElementById('out');
+      if(out){
+        out.innerHTML = `
+          <strong>Ergebnis</strong><br>
+          Monatsbeitrag Firma: <b>${fmt(monthlyCompany)}</b><br>
+          Jahresbeitrag Firma: <b>${fmt(annualCompany)}</b><br><br>
+          Tage eingespart (total): <b>${daysSavedTotal}</b><br>
+          Direkte Lohnkosten-Ersparnis: <b>${fmt(wageSaving)}</b><br>
+          Entgangener Gewinn-Ersparnis: <b>${fmt(profitSaving)}</b><br>
+          <hr>
+          Gesamtersparnis (jährlich): <b>${fmt(totalSaving)}</b><br>
+          Netto Vorteil: <b>${fmt(netBenefit)}</b><br>
+          ROI: <b>${roi!==null?roi.toFixed(1)+' %':'–'}</b><br>
+          Break-Even Tage/Mitarbeiter: <b>${breakEvenDays!==null?breakEvenDays.toFixed(2):'–'}</b>
+        `;
+        const kpiRoi = document.getElementById('kpi_roi');
+        const kpiBe = document.getElementById('kpi_be');
+        if(kpiRoi) kpiRoi.textContent = roi!==null? roi.toFixed(1)+' %' : '–';
+        if(kpiBe) kpiBe.textContent = breakEvenDays!==null? breakEvenDays.toFixed(2) : '–';
+      }
+
+      return {N, tarif, budget, addon, d, c, p, monthlyCompany, annualCompany, daysSavedTotal, wageSaving, profitSaving, totalSaving, netBenefit, roi, breakEvenDays};
+    }
+
+    // ====== FORM HANDLER (must exist before onsubmit fires) ======
+    function handleFormSubmit(e){
+      // Fill hidden fields with the latest calc
+      const res = calculate();
+      document.getElementById('form_employees').value   = res.N;
+      document.getElementById('form_tarif').value       = res.tarif;
+      document.getElementById('form_budget').value      = res.budget;
+      document.getElementById('form_addon').value       = res.addon ? 'ja' : 'nein';
+      document.getElementById('form_daysSaved').value   = res.d;
+      document.getElementById('form_costPerDay').value  = res.c;
+      document.getElementById('form_profitPerDay').value= res.p;
+
+      const summaryText = `Jahresbeitrag: ${res.annualCompany.toFixed(2)}€ | Einsparung: ${res.totalSaving.toFixed(2)}€ | Netto: ${res.netBenefit.toFixed(2)}€`;
+      document.getElementById('form_summary').value = summaryText;
+
+      const details = [
+        '— BkV-Rechner Report —',
+        `Mitarbeiter: ${res.N}`,
+        `Tarif: ${res.tarif} | Budget: ${res.budget} | Unfall Clinic+: ${res.addon?'ja':'nein'}`,
+        `Tage/MA: ${res.d} | Kosten/Tag: ${res.c}€ | Profit/Tag: ${res.p}€`,
+        `Monatsbeitrag Firma: ${res.monthlyCompany.toFixed(2)}€`,
+        `Jahresbeitrag Firma: ${res.annualCompany.toFixed(2)}€`,
+        `Gesparte Tage (gesamt): ${res.daysSavedTotal}`,
+        `Lohnkosten-Ersparnis: ${res.wageSaving.toFixed(2)}€`,
+        `Entgangener Gewinn-Ersparnis: ${res.profitSaving.toFixed(2)}€`,
+        `Gesamtersparnis: ${res.totalSaving.toFixed(2)}€`,
+        `Netto-Vorteil: ${res.netBenefit.toFixed(2)}€`,
+        `ROI: ${res.roi!==null?res.roi.toFixed(1)+' %':'–'}`,
+        `Break-even Tage/MA: ${res.breakEvenDays!==null?res.breakEvenDays.toFixed(2):'–'}`
+      ].join('\n');
+      document.getElementById('form_report').value = details;
+
+      return true; // allow Netlify to submit + redirect to thank-you.html
+    }
+
+    // ====== INIT after DOM is ready ======
+    function initUI(){
+      const btnCalc = document.getElementById('calc');
+      const btnPdf  = document.getElementById('download');
+      if(btnCalc) btnCalc.addEventListener('click', calculate);
+      if(btnPdf)  btnPdf.addEventListener('click', exportPDF);
+      calculate(); // populate on load
+
+      // Lightweight test suite (run with ?test=1)
+      if(new URLSearchParams(location.search).get('test')==='1'){
+        runTests();
+      }
+    }
+
+    async function exportPDF(){
+      const outEl = document.getElementById('out');
+      if(!outEl){ console.warn('No result element to export'); return; }
+      const btn = document.getElementById('download');
+      if(btn) btn.innerText = 'PDF wird erstellt…';
+      try{
+        const canvas = await html2canvas(outEl, {scale:2});
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({orientation:'p', unit:'mm', format:'a4'});
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = 210; // A4
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save('BkV-Report.pdf');
+      }catch(err){
+        console.error(err);
+        alert('Fehler beim Erstellen des PDFs: '+err.message);
+      }
+      if(btn) btn.innerText = '📄 Report (PDF)';
+    }
+
+    // ====== TESTS ======
+    function approx(a,b,tol=1e-6){ return Math.abs(a-b) <= tol; }
+    function runTests(){
+      // set known inputs
+      document.getElementById('employees').value=5;
+      document.getElementById('tarif').value='aktiv';
+      document.getElementById('budget').value='300';
+      document.getElementById('addon').checked=false;
+      document.getElementById('daysSaved').value=3;
+      document.getElementById('costPerDay').value=250;
+      document.getElementById('profitPerDay').value=100;
+      const res = calculate();
+      console.assert(approx(res.monthlyCompany,65), 'monthlyCompany should be 65');
+      console.assert(approx(res.annualCompany,780), 'annualCompany should be 780');
+      console.assert(approx(res.daysSavedTotal,15), 'daysSavedTotal should be 15');
+      console.assert(approx(res.wageSaving,3750), 'wageSaving should be 3750');
+      console.assert(approx(res.profitSaving,1500), 'profitSaving should be 1500');
+      console.assert(approx(res.totalSaving,5250), 'totalSaving should be 5250');
+      console.assert(approx(res.netBenefit,4470), 'netBenefit should be 4470');
+      console.assert(Math.abs(res.roi - 573.0769) < 0.01, 'ROI% ≈ 573.08');
+      console.assert(Math.abs(res.breakEvenDays - 0.445714) < 0.0001, 'breakEvenDays ≈ 0.4457');
+      console.log('All tests passed.');
+    }
+
+    // Defer init until DOM is ready
+    document.addEventListener('DOMContentLoaded', initUI);
+  </script>
+</head>
+<body>
+  <header>
+    <h1>🛠️ BkV-Rechner <span class="badge">Für Dachdecker-Betriebe</span></h1>
+    <div class="small"><span class="pill">Ohne Gesundheitsfragen</span> &nbsp;|&nbsp; Schnell prüfen: Beiträge, Einsparungen & ROI – danach direkt Online-Analyse buchen.</div>
+  </header>
+
+  <div class="grid">
+    <!-- Links: Eingaben -->
+    <div class="card">
+      <label>Mitarbeiteranzahl
+        <input id="employees" type="number" min="1" value="5">
+      </label>
+
+      <div class="row">
+        <div style="flex:1">
+          <label>Tarif
+            <select id="tarif">
+              <option value="aktiv">Gesund Aktiv+</option>
+              <option value="agil">Gesund Agil+ (inkl. 70% Zahn)</option>
+            </select>
+          </label>
+        </div>
+        <div style="flex:1">
+          <label>Budget
+            <select id="budget">
+              <option value="300">300</option>
+              <option value="600">600</option>
+              <option value="900">900</option>
+              <option value="1200">1200</option>
+              <option value="1500">1500</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <label><input id="addon" type="checkbox"> Unfall Clinic+ (1,66 €/Monat pro Mitarbeiter)</label>
+
+      <div class="row">
+        <div style="flex:1">
+          <label>Tage eingespart pro Mitarbeiter/Jahr
+            <input id="daysSaved" type="number" min="0" step="0.1" value="3">
+          </label>
+        </div>
+        <div style="flex:1">
+          <label>Kosten pro Krankheitstag (direkte Lohnkosten)
+            <input id="costPerDay" type="number" value="250">
+          </label>
+        </div>
+      </div>
+
+      <label>Profit pro Tag (entgangener Gewinn)
+        <input id="profitPerDay" type="number" value="100">
+      </label>
+
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-primary" id="calc" type="button">⚙️ Berechnen</button>
+        <button class="btn btn-outline" id="download" type="button">📄 Report (PDF)</button>
+      </div>
+
+      <hr>
+
+      <!-- Lead-Formular (Netlify Forms) -->
+      <form name="lead" method="POST" action="/thank-you.html" data-netlify="true" netlify-honeypot="bot-field" onsubmit="return handleFormSubmit(event)">
+        <input type="hidden" name="form-name" value="lead">
+        <p style="display:none"><label>Don’t fill this out: <input name="bot-field"></label></p>
+
+        <div class="row">
+          <label style="flex:1">Firmenname<input name="company" required></label>
+          <label style="flex:1">Ansprechpartner<input name="contact_name" required></label>
+        </div>
+        <div class="row">
+          <label style="flex:1">E-Mail<input name="email" type="email" required></label>
+          <label style="flex:1">Telefon / WhatsApp<input name="phone"></label>
+        </div>
+
+        <!-- hidden calc fields -->
+        <input type="hidden" name="employees" id="form_employees">
+        <input type="hidden" name="tarif" id="form_tarif">
+        <input type="hidden" name="budget" id="form_budget">
+        <input type="hidden" name="addon" id="form_addon">
+        <input type="hidden" name="daysSaved" id="form_daysSaved">
+        <input type="hidden" name="costPerDay" id="form_costPerDay">
+        <input type="hidden" name="profitPerDay" id="form_profitPerDay">
+        <input type="hidden" name="summary" id="form_summary">
+        <textarea name="report_details" id="form_report" style="display:none"></textarea>
+
+        <label class="small"><input name="consent" type="checkbox" required> Ich stimme der Verarbeitung meiner Daten gemäß der <a href="https://signal-iduna-agentur.de/antonio.la-gaipa/datenschutz/" target="_blank" rel="noopener">Datenschutzerklärung</a> zu.</label>
+
+        <div style="margin-top:8px" class="row">
+          <button class="btn btn-primary btn-full" type="submit">🗓️ Kostenloses Online-Gespräch anfragen</button>
+        </div>
+      </form>
+
+      <p class="small">Hinweis: Leads werden DSGVO-konform nur nach Einwilligung verarbeitet. <b>Konzept ohne Gesundheitsfragen.</b></p>
+    </div>
+
+    <!-- Rechts: Ergebnisse -->
+    <div class="card">
+      <div class="result" id="out"><strong>Ergebnis:</strong><br> Noch keine Berechnung durchgeführt.</div>
+      <div class="kpi">
+        <div><div class="small">ROI</div><div id="kpi_roi" style="font-weight:700;font-size:18px">–</div></div>
+        <div><div class="small">Break-even Tage/MA</div><div id="kpi_be" style="font-weight:700;font-size:18px">–</div></div>
+      </div>
+      <div style="margin-top:10px">
+        <a class="btn btn-primary btn-full" href="https://cal.com/antonio-la-gaipa-8hyyn7/analyse-termin?user=antonio-la-gaipa-8hyyn7" target="_blank" rel="noopener">🗓️ Termin buchen (Online-Analyse)</a>
+      </div>
+    </div>
+
+    <!-- Leistungsbeschreibung -->
+    <div class="card full">
+      <h3>📦 Leistungsbeschreibung (Kurz & praxisnah)</h3>
+      <p class="small">Auszugsweise Darstellung typischer Inhalte. Verbindlich sind ausschließlich die Versicherungsbedingungen / Leistungsübersichten des Anbieters und dein individueller Antrag. Budgets beziehen sich auf jährliche Gesundheitsbudgets je Mitarbeiter. <b>Konzept ohne Gesundheitsfragen.</b></p>
+
+      <div class="tariff-grid">
+        <div class="tariff-card">
+          <h4>🧱 Gesund Aktiv+ (Budget 300 / 600 / 900 / 1200 / 1500)</h4>
+          <span class="pill">Budgettarif · Ohne Gesundheitsfragen</span>
+          <ul class="list">
+            <li>🎯 Freies Gesundheitsbudget für Rechnungen u. a. aus: Vorsorge-/Check-ups, Sehhilfen, Physio/Heilpraktiker, Massagen, Hilfsmittel (je nach Bedingungen).</li>
+            <li>🏥 Prävention & Früherkennung: z. B. professionelle Zahnreinigung (PZR), Haut-/Augen-Checks, Impfungen (budgetabhängig, gemäß Tarif).</li>
+            <li>💊 Zuzahlungen und erstattungsfähige Arznei-/Hilfsmittel werden über das Budget abgefedert.</li>
+            <li>📲 Einfache Abwicklung: Rechnung hochladen – Budget wird angerechnet.</li>
+          </ul>
+          <div class="small">Monatsbeitrag pro MA: 300€ → 13,00€ | 600€ → 22,00€ | 900€ → 30,00€ | 1200€ → 37,00€ | 1500€ → 43,00€</div>
+        </div>
+
+        <div class="tariff-card">
+          <h4>🦷 Gesund Agil+ (Budget 300 / 600 / 900 / 1200 / 1500 + <b>70% Zahn</b>)</h4>
+          <span class="pill">Budget + 70% Zahn · Ohne Gesundheitsfragen</span>
+          <ul class="list">
+            <li>🔧 Enthält alle Aktiv+-Vorteile (Budgetleistungen) für Prävention & Gesundheitskosten.</li>
+            <li>🦷 Zusätzlich <b>70% Erstattung</b> für Zahnleistungen (z. B. Zahnersatz/Implantate/Prothetik) gemäß Bedingungen, ggf. mit Höchstgrenzen.</li>
+            <li>🪥 Regelmäßige Prophylaxe wird finanziell deutlich entlastet.</li>
+            <li>📈 Sinnvoll, wenn Zahn-Themen im Team eine größere Rolle spielen.</li>
+          </ul>
+          <div class="small">Monatsbeitrag pro MA: 300€ → 24,22€ | 600€ → 33,22€ | 900€ → 41,22€ | 1200€ → 48,22€ | 1500€ → 54,22€</div>
+        </div>
+
+        <div class="addon-card">
+          <h4>🦺 Zusatzbaustein: Unfall Clinic+</h4>
+          <span class="pill">+1,66 € / Monat je MA</span>
+          <ul class="list">
+            <li>🦺 Ergänzt den Schutz bei <b>privaten</b> Unfällen (außerhalb der BG/Arbeitszeit) – Details gemäß Tarifunterlagen.</li>
+            <li>🚑 Typisch: finanzielle Leistungen bei unfallbedingten Folgen (z. B. Invalidität, Soforthilfen, akute Hilfeleistungen – je nach Bedingungen).</li>
+            <li>🔗 Flexibel zu Aktiv+ oder Agil+ zubuchbar – ein Klick in der Auswahl genügt.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="small">Hinweis: Diese Übersicht dient der schnellen Orientierung speziell für Dachdecker-Betriebe. Sie ersetzt keine individuelle Beratung und ist nicht rechtsverbindlich.</p>
+    </div>
+
+    <div class="card full small">
+      🔗 Direkter Buchungslink: <a href="https://cal.com/antonio-la-gaipa-8hyyn7/analyse-termin?user=antonio-la-gaipa-8hyyn7" target="_blank" rel="noopener">cal.com/antonio-la-gaipa-8hyyn7/analyse-termin</a> · Datenschutz: <a href="https://signal-iduna-agentur.de/antonio.la-gaipa/datenschutz/" target="_blank" rel="noopener">signal-iduna-agentur.de/…/datenschutz</a>
+    </div>
+  </div>
+
+  <!-- libs -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
+</html>
